@@ -1,7 +1,7 @@
 from data import *
 from utils.augmentations import SSDAugmentation
 from layers.modules import MultiBoxLoss
-from ssd import build_ssd
+from ssd import build_tbpp
 import os
 import time
 import torch
@@ -67,7 +67,7 @@ def train():
         cfg = voc
         dataset = VOCDetection(root=args.dataset_root, transform=SSDAugmentation(cfg['min_dim'], MEANS))
 
-    ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
+    ssd_net = build_tbpp('train', cfg['min_dim'], cfg['num_classes'])
     net = ssd_net
 
     if args.cuda:
