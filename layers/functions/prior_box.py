@@ -45,7 +45,7 @@ class PriorBox(object):
                 mean += [cx, cy, s_k_prime, s_k_prime]
 
                 # rest of aspect ratios
-                for ar in self.aspect_ratios[k]: # [[2], [2, 3], [2, 3], [2, 3], [2], [2]]
+                for ar in self.aspect_ratios[k]:
                     # different feature maps have different numbers of prior boxes with different sizes
                     mean += [cx, cy, s_k*sqrt(ar), s_k/sqrt(ar)]
                     mean += [cx, cy, s_k/sqrt(ar), s_k*sqrt(ar)]

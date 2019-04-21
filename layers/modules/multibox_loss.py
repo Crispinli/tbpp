@@ -51,11 +51,11 @@ class MultiBoxLoss(nn.Module):
             predictions (tuple): A tuple containing loc preds, conf preds,
             and prior boxes from SSD net.
                 conf shape: torch.size(batch_size,num_priors,num_classes)
-                loc shape: torch.size(batch_size,num_priors,4)
+                loc shape: torch.size(batch_size,num_priors,4) -> torch.size(batch_size,num_priors,12)
                 priors shape: torch.size(num_priors,4)
 
             targets (tensor): Ground truth boxes and labels for a batch,
-                shape: [batch_size,num_objs,5] (last idx is the label).
+                shape: [batch_size,num_objs,5] (last idx is the label) -> [batch_size,num_objs,15].
         """
         loc_data, conf_data, priors = predictions
         num = loc_data.size(0)

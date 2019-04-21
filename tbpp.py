@@ -2,16 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from layers import *
+from layers import PriorBox, L2Norm, Detect
 import os
 
 
-# TODO: 1. validate the SSD512 network and the first is the 'config'
+# DONE: 1. validate the SSD512 network and the first is the 'config'
 # TODO: 2. implement the vertical offset of the bounding boxes
-# TODO: 3. modify the number in mbox['512']
-# TODO: 4. modify the size of loc and conf
-# TODO: 5. modify the kernel size in the multibox layer and calculate the padding size
-# TODO: 6. validate whether vgg_source=[21, -2] or not
+# DONE: 3. modify the number in mbox['512']
+# DONE: 4. modify the size of loc and conf
+# DONE: 5. modify the kernel size in the multibox layer and calculate the padding size
+# DONE: 6. validate whether vgg_source=[21, -2] or not
+# TODO: 7. modify the multibox loss function
 
 
 class TBPP(nn.Module):
@@ -28,7 +29,7 @@ class TBPP(nn.Module):
             'steps': [8, 16, 32, 64, 128, 256, 512],
             'min_sizes': [20, 51, 133, 215, 296, 378, 460],
             'max_sizes': [51, 133, 215, 296, 378, 460, 542],
-            'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2, 3], [2], [2]],
+            'aspect_ratios': [[2, 3], [2, 3, 5], [2, 3, 5], [2, 3, 5], [2, 3, 5], [2, 3], [2, 3]],  # TODO
             'variance': [0.1, 0.2],
             'clip': True,
             'name': 'MINE'}
@@ -132,6 +133,7 @@ def add_extras(cfg, in_channels):
                 layers += [nn.Conv2d(in_channels, v, kernel_size=(1, 3)[flag])]
             flag = not flag
         in_channels = v
+    layers += [nn.Conv2d(in_channels, 256, kernel_size=4, padding=1)]  # SSD512
     return layers
 
 
@@ -140,11 +142,11 @@ def multibox(vgg, extra_layers, cfg, num_classes):
     conf_layers = []
     vgg_source = [21, -2]
     for k, v in enumerate(vgg_source):
-        loc_layers += [nn.Conv2d(vgg[v].out_channels, cfg[k] * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(vgg[v].out_channels, cfg[k] * num_classes, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(vgg[v].out_channels, cfg[k] * 12, kernel_size=(3, 5), padding=(1, 2))]
+        conf_layers += [nn.Conv2d(vgg[v].out_channels, cfg[k] * num_classes, kernel_size=(3, 5), padding=(1, 2))]
     for k, v in enumerate(extra_layers[1::2], 2):  # the index start from 2
-        loc_layers += [nn.Conv2d(v.out_channels, cfg[k] * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(v.out_channels, cfg[k] * num_classes, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(v.out_channels, cfg[k] * 12, kernel_size=(3, 5), padding=(1, 2))]
+        conf_layers += [nn.Conv2d(v.out_channels, cfg[k] * num_classes, kernel_size=(3, 5), padding=(1, 2))]
     return vgg, extra_layers, (loc_layers, conf_layers)
 
 
@@ -156,7 +158,7 @@ extras = {
     '512': [256, 'S', 512, 128, 'S', 256, 128, 'S', 256, 128, 'S', 256, 128]}
 mbox = {
     '300': [4, 6, 6, 6, 4, 4],
-    '512': [4, 6, 6, 6, 6, 4, 4]}
+    '512': [6, 8, 8, 8, 8, 6, 6]}
 
 
 def build_tbpp(phase, size=512, num_classes=2):

@@ -13,7 +13,7 @@ from data import VOC_ROOT, VOCAnnotationTransform, VOCDetection, BaseTransform
 from data import VOC_CLASSES as labelmap
 import torch.utils.data as data
 
-from ssd import build_ssd
+from tbpp import build_tbpp
 
 import sys
 import os
@@ -421,7 +421,7 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     num_classes = len(labelmap) + 1                      # +1 for background
-    net = build_ssd('test', 300, num_classes)            # initialize SSD
+    net = build_tbpp('test', 512, num_classes)            # initialize SSD
     net.load_state_dict(torch.load(args.trained_model))
     net.eval()
     print('Finished loading model!')

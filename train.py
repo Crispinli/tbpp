@@ -1,7 +1,7 @@
 from data import *
 from utils.augmentations import SSDAugmentation
 from layers.modules import MultiBoxLoss
-from ssd import build_tbpp
+from tbpp import build_tbpp
 import os
 import time
 import torch
@@ -50,9 +50,10 @@ else:
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
-viz = Visdom() if args.visdom else None# visualization function
+viz = Visdom() if args.visdom else None  # visualization function
 
 def train():
+    # TODO: modify my own dataset
     if args.dataset == 'COCO':
         if args.dataset_root == VOC_ROOT:
             if not os.path.exists(COCO_ROOT):
@@ -67,20 +68,20 @@ def train():
         cfg = voc
         dataset = VOCDetection(root=args.dataset_root, transform=SSDAugmentation(cfg['min_dim'], MEANS))
 
-    ssd_net = build_tbpp('train', cfg['min_dim'], cfg['num_classes'])
-    net = ssd_net
+    tbpp_net = build_tbpp('train', cfg['min_dim'], cfg['num_classes'])
+    net = tbpp_net
 
     if args.cuda:
-        net = torch.nn.DataParallel(ssd_net)
+        net = torch.nn.DataParallel(tbpp_net)
         cudnn.benchmark = True
 
     if args.resume:
         print('Resuming training, loading {}...'.format(args.resume))
-        ssd_net.load_weights(args.resume)
+        tbpp_net.load_weights(args.resume)
     else:
         vgg_weights = torch.load(args.save_folder + args.basenet)
         print('Loading base network...')
-        ssd_net.vgg.load_state_dict(vgg_weights)
+        tbpp_net.vgg.load_state_dict(vgg_weights)
 
     if args.cuda:
         net = net.cuda()
@@ -88,9 +89,9 @@ def train():
     if not args.resume:
         print('Initializing weights...')
         # initialize newly added layers' weights with xavier method
-        ssd_net.extras.apply(weights_init)
-        ssd_net.loc.apply(weights_init)
-        ssd_net.conf.apply(weights_init)
+        tbpp_net.extras.apply(weights_init)
+        tbpp_net.loc.apply(weights_init)
+        tbpp_net.conf.apply(weights_init)
 
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5, False, args.cuda)
@@ -109,7 +110,7 @@ def train():
     step_index = 0
 
     if args.visdom:
-        vis_title = 'SSD.PyTorch on ' + dataset.name
+        vis_title = 'TBPP.PyTorch on ' + dataset.name
         vis_legend = ['Loc Loss', 'Conf Loss', 'Total Loss']
         iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
         epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
@@ -153,8 +154,8 @@ def train():
         loss.backward()
         optimizer.step()
         t1 = time.time()
-        loc_loss += loss_l.data[0]
-        conf_loss += loss_c.data[0]
+        loc_loss += loss_l.data[0]  # TODO: convert to pytorch1.0 way
+        conf_loss += loss_c.data[0]  # TODO: convert to pytorch1.0 way
 
         if iteration % 10 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
@@ -165,8 +166,8 @@ def train():
 
         if iteration != 0 and iteration % 5000 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_' + repr(iteration) + '.pth')
-    torch.save(ssd_net.state_dict(), args.save_folder + '' + args.dataset + '.pth')
+            torch.save(tbpp_net.state_dict(), 'weights/tbpp_' + repr(iteration) + '.pth')
+    torch.save(tbpp_net.state_dict(), args.save_folder + '' + args.dataset + '.pth')
 
 
 def adjust_learning_rate(optimizer, gamma, step):
